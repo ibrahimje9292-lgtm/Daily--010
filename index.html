@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Site Attendance</title>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --text: #1c2129;
+  --text-muted: #6b7280;
+  --brand: #2f5d8a;
+  --brand-dark: #244a6e;
+  --present: #1f8a4c;
+  --present-bg: #e7f6ec;
+  --vacation: #b8860b;
+  --vacation-bg: #fbf1da;
+  --absent: #c0392b;
+  --absent-bg: #fbe9e7;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hidden { display: none !important; }
+
+.screen { min-height: 100vh; }
+
+/* ---------- Login ---------- */
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.login-card h1 { margin: 0 0 4px; font-size: 1.4rem; }
+.subtitle { margin: 0 0 20px; color: var(--text-muted); font-size: 0.9rem; }
+#login-form label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+#login-form input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+#login-form button {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+}
+#login-form button:hover { background: var(--brand-dark); }
+.error { color: var(--absent); font-size: 0.85rem; min-height: 1.2em; margin-top: 10px; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-left { display: flex; flex-direction: column; margin-right: 12px; }
+.whoami { font-size: 0.78rem; color: var(--text-muted); }
+.nav-tabs { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.nav-tabs button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text);
+}
+.nav-tabs button.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+.ghost-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.ghost-btn:hover { background: var(--bg); }
+
+.view-root { padding: 18px 16px 60px; max-width: 980px; margin: 0 auto; }
+
+/* ---------- Summary tiles ---------- */
+.tiles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  min-width: 110px;
+  text-align: center;
+}
+.tile .num { font-size: 1.5rem; font-weight: 700; display: block; }
+.tile .label { font-size: 0.75rem; color: var(--text-muted); }
+.tile.present .num { color: var(--present); }
+.tile.vacation .num { color: var(--vacation); }
+.tile.absent .num { color: var(--absent); }
+
+/* ---------- Toolbar / filters ---------- */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.toolbar input[type="date"],
+.toolbar select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.primary-btn {
+  border: none;
+  background: var(--brand);
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-btn:hover { background: var(--brand-dark); }
+.primary-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- Attendance table ---------- */
+.worker-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.worker-info .name { font-weight: 600; }
+.worker-info .meta { font-size: 0.78rem; color: var(--text-muted); }
+.status-group { display: flex; gap: 6px; }
+.status-btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  width: 40px;
+  height: 36px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.status-btn[data-status="P"].active { background: var(--present-bg); border-color: var(--present); color: var(--present); }
+.status-btn[data-status="V"].active { background: var(--vacation-bg); border-color: var(--vacation); color: var(--vacation); }
+.status-btn[data-status="A"].active { background: var(--absent-bg); border-color: var(--absent); color: var(--absent); }
+.worker-notes {
+  grid-column: 1 / -1;
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.worker-notes.open { display: flex; }
+.worker-notes input {
+  flex: 1;
+  min-width: 140px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.notes-toggle {
+  grid-column: 1 / -1;
+  background: none;
+  border: none;
+  color: var(--brand);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.table-scroll { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+table.data-table { width: 100%; min-width: 560px; border-collapse: collapse; background: var(--surface); }
+table.data-table th, table.data-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+table.data-table th { background: var(--bg); font-weight: 600; color: var(--text-muted); }
+table.data-table tr:last-child td { border-bottom: none; }
+
+.status-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+.status-pill.P { background: var(--present-bg); color: var(--present); }
+.status-pill.V { background: var(--vacation-bg); color: var(--vacation); }
+.status-pill.A { background: var(--absent-bg); color: var(--absent); }
+
+.section-title { font-size: 1rem; font-weight: 700; margin: 22px 0 10px; }
+.empty-state { color: var(--text-muted); font-size: 0.9rem; padding: 20px; text-align: center; }
+.small-note { color: var(--text-muted); font-size: 0.78rem; margin-top: 6px; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.form-grid input, .form-grid select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+.toast.show { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <section id="login-screen" class="screen">
+    <div class="login-card">
+      <h1>Site Attendance</h1>
+      <p class="subtitle">Bugatti Residences — Fitout</p>
+      <form id="login-form">
+        <label>Username
+          <input type="text" id="login-username" autocomplete="username" required />
+        </label>
+        <label>Password
+          <input type="password" id="login-password" autocomplete="current-password" required />
+        </label>
+        <button type="submit">Log in</button>
+        <p id="login-error" class="error"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="main-screen" class="screen hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <strong>Site Attendance</strong>
+        <span id="whoami" class="whoami"></span>
+      </div>
+      <nav id="nav-tabs" class="nav-tabs"></nav>
+      <button id="logout-btn" class="ghost-btn">Log out</button>
+    </header>
+
+    <main id="view-root" class="view-root"></main>
+  </section>
+
+</div>
+
+<script>
+/* Site Attendance — vanilla JS SPA client */
+
+const state = {
+  user: null,
+  activeTab: 'today',
+  workersCache: [],
+  foremenCache: [],
+  pendingChanges: new Map(), // workerId -> {status, activity, duration, location}
+  todayDate: new Date().toISOString().slice(0, 10),
+};
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    ...opts,
+  });
+  if (res.status === 401) {
+    showLogin();
+    throw new Error('Not logged in');
+  }
+  const isJson = (res.headers.get('content-type') || '').includes('application/json');
+  const body = isJson ? await res.json() : await res.text();
+  if (!res.ok) {
+    throw new Error((body && body.error) || 'Request failed');
+  }
+  return body;
+}
+
+function toast(msg) {
+  let el = $('.toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---------------- Auth ---------------- */
+
+function showLogin() {
+  $('#login-screen').classList.remove('hidden');
+  $('#main-screen').classList.add('hidden');
+}
+
+function showMain() {
+  $('#login-screen').classList.add('hidden');
+  $('#main-screen').classList.remove('hidden');
+}
+
+async function init() {
+  try {
+    const me = await api('/api/me');
+    state.user = me;
+    onLoggedIn();
+  } catch (e) {
+    showLogin();
+  }
+}
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = $('#login-username').value.trim();
+  const password = $('#login-password').value;
+  $('#login-error').textContent = '';
+  try {
+    const user = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    state.user = user;
+    onLoggedIn();
+  } catch (err) {
+    $('#login-error').textContent = err.message;
+  }
+});
+
+$('#logout-btn').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST' });
+  state.user = null;
+  showLogin();
+});
+
+function onLoggedIn() {
+  showMain();
+  $('#whoami').textContent = `${state.user.fullName} · ${state.user.role}`;
+  renderNav();
+  setActiveTab('today');
+}
+
+/* ---------------- Nav ---------------- */
+
+function tabsForRole(role) {
+  if (role === 'admin') {
+    return [
+      ['today', "Today's Attendance"],
+      ['workers', 'Workers'],
+      ['foremen', 'Foremen'],
+      ['history', 'History & Export'],
+    ];
+  }
+  return [
+    ['today', "Today's Attendance"],
+    ['history', 'History & Export'],
+  ];
+}
+
+function renderNav() {
+  const nav = $('#nav-tabs');
+  nav.innerHTML = '';
+  for (const [key, label] of tabsForRole(state.user.role)) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.dataset.tab = key;
+    btn.addEventListener('click', () => setActiveTab(key));
+    nav.appendChild(btn);
+  }
+}
+
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  $$('#nav-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  const root = $('#view-root');
+  root.innerHTML = '<p class="empty-state">Loading…</p>';
+  const renderers = { today: renderToday, workers: renderWorkers, foremen: renderForemen, history: renderHistory };
+  (renderers[tab] || renderToday)(root).catch((err) => {
+    root.innerHTML = `<p class="empty-state">${err.message}</p>`;
+  });
+}
+
+/* ---------------- Today's Attendance ---------------- */
+
+async function renderToday(root) {
+  const date = state.todayDate;
+  const data = await api(`/api/attendance?date=${encodeURIComponent(date)}`);
+  state.pendingChanges = new Map();
+
+  const counts = { P: 0, V: 0, A: 0, unmarked: 0 };
+  data.workers.forEach((w) => {
+    if (w.status) counts[w.status] += 1;
+    else counts.unmarked += 1;
+  });
+
+  root.innerHTML = `
+    <div class="toolbar">
+      <input type="date" id="date-picker" value="${date}" />
+      <span class="small-note" style="margin-left:auto">${data.workers.length} worker(s)</span>
+      <button class="primary-btn" id="save-attendance-btn">Save changes</button>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="num">${data.workers.length}</span><span class="label">Total</span></div>
+      <div class="tile present"><span class="num">${counts.P}</span><span class="label">Present</span></div>
+      <div class="tile vacation"><span class="num">${counts.V}</span><span class="label">Vacation</span></div>
+      <div class="tile absent"><span class="num">${counts.A}</span><span class="label">Absent</span></div>
+    </div>
+    <div id="worker-list"></div>
+  `;
+
+  $('#date-picker').addEventListener('change', (e) => {
+    state.todayDate = e.target.value;
+    setActiveTab('today');
+  });
+
+  const list = $('#worker-list');
+  if (data.workers.length === 0) {
+    list.innerHTML = '<p class="empty-state">No workers assigned to you yet. Ask the admin to assign your crew.</p>';
+  } else {
+    data.workers.forEach((w) => list.appendChild(buildWorkerCard(w)));
+  }
+
+  $('#save-attendance-btn').addEventListener('click', async () => {
+    if (state.pendingChanges.size === 0) {
+      toast('No changes to save');
+      return;
+    }
+    const records = Array.from(state.pendingChanges.entries()).map(([workerId, v]) => ({ workerId, ...v }));
+    const btn = $('#save-attendance-btn');
+    btn.disabled = true;
+    try {
+      const res = await api('/api/attendance', {
+        method: 'POST',
+        body: JSON.stringify({ date, records }),
+      });
+      toast(`Saved ${res.written} record(s)`);
+      state.pendingChanges.clear();
+    } catch (err) {
+      toast(`Save failed: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+function buildWorkerCard(w) {
+  const card = document.createElement('div');
+  card.className = 'worker-card';
+  card.innerHTML = `
+    <div class="worker-info">
+      <div class="name">${escapeHtml(w.name)}</div>
+      <div class="meta">${escapeHtml(w.trade || 'Trade —')} ${w.zone ? '· Zone ' + escapeHtml(w.zone) : ''} ${w.foremanName ? '· ' + escapeHtml(w.foremanName) : ''}</div>
+    </div>
+    <div class="status-group">
+      <button class="status-btn" data-status="P" title="Present">P</button>
+      <button class="status-btn" data-status="V" title="Vacation">V</button>
+      <button class="status-btn" data-status="A" title="Absent">A</button>
+    </div>
+    <button class="notes-toggle" type="button">+ activity / location note</button>
+    <div class="worker-notes">
+      <input type="text" placeholder="Activity" class="f-activity" value="${escapeAttr(w.activity)}" />
+      <input type="text" placeholder="Duration" class="f-duration" value="${escapeAttr(w.duration)}" />
+      <input type="text" placeholder="Location" class="f-location" value="${escapeAttr(w.location)}" />
+    </div>
+  `;
+
+  const current = { status: w.status, activity: w.activity, duration: w.duration, location: w.location };
+
+  function markStatus(status) {
+    current.status = status;
+    $$('.status-btn', card).forEach((b) => b.classList.toggle('active', b.dataset.status === status));
+    queueChange();
+  }
+
+  function queueChange() {
+    if (!current.status) return;
+    state.pendingChanges.set(w.workerId, {
+      status: current.status,
+      activity: $('.f-activity', card).value || null,
+      duration: $('.f-duration', card).value || null,
+      location: $('.f-location', card).value || null,
+    });
+  }
+
+  $$('.status-btn', card).forEach((btn) => {
+    btn.addEventListener('click', () => markStatus(btn.dataset.status));
+  });
+  if (w.status) markStatus(w.status);
+
+  $('.notes-toggle', card).addEventListener('click', () => {
+    $('.worker-notes', card).classList.toggle('open');
+  });
+  $$('.worker-notes input', card).forEach((inp) => inp.addEventListener('input', queueChange));
+
+  return card;
+}
+
+/* ---------------- Workers (admin) ---------------- */
+
+async function renderWorkers(root) {
+  const [workers, foremen] = await Promise.all([api('/api/workers?includeInactive=1'), api('/api/users/foremen')]);
+  state.workersCache = workers;
+  state.foremenCache = foremen;
+
+  root.innerHTML = `
+    <div class="section-title">Add worker</div>
+    <div class="form-grid">
+      <input type="text" id="nw-name" placeholder="Full name" />
+      <input type="text" id="nw-trade" placeholder="Trade" />
+      <input type="text" id="nw-zone" placeholder="Zone" />
+      <select id="nw-foreman"><option value="">— No foreman —</option>${foremenOptions(foremen)}</select>
+      <button class="primary-btn" id="add-worker-btn">Add worker</button>
+    </div>
+    <div class="section-title">All workers (${workers.length})</div>
+    <div class="table-scroll"><table class="data-table">
+      <thead><tr><th>Name</th><th>Trade</th><th>Zone</th><th>Foreman</th><th>Active</th><th></th></tr></thead>
+      <tbody id="workers-tbody"></tbody>
+    </table></div>
+  `;
+
+  const tbody = $('#workers-tbody');
+  workers.forEach((w) => tbody.appendChild(buildWorkerRow(w, foremen)));
+
+  $('#add-worker-btn').addEventListener('click', async () => {
+    const name = $('#nw-name').value.trim();
+    if (!name) return toast('Name is required');
+    try {
+      await api('/api/workers', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          trade: $('#nw-trade').value.trim() || null,
+          zone: $('#nw-zone').value.trim() || null,
+          foremanId: $('#nw-foreman').value || null,
+        }),
+      });
+      toast('Worker added');
+      setActiveTab('workers');
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+}
+
+function foremenOptions(foremen, selectedId) {
+  return foremen
+    .map((f) => `<option value="${f.id}" ${String(f.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(f.full_name)}</option>`)
+    .join('');
+}
+
+function buildWorkerRow(w, foremen) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" value="${escapeAttr(w.name)}" class="ed-name" style="width:100%"/></td>
+    <td><input type="text" value="${escapeAttr(w.trade)}" class="ed-trade" style="width:100%"/></td>
+    <td><input type="text" value="${escapeAttr(w.zone)}" class="ed-zone" style="width:60px"/></td>
+    <td><select class="ed-foreman">${'<option value="">—</option>' + foremenOptions(foremen, w.foreman_id)}</select></td>
+    <td><input type="checkbox" class="ed-active" ${w.active ? 'checked' : ''}/></td>
+    <td><button class="ghost-btn ed-save">Save</button></td>
+  `;
+  $('.ed-save', tr).addEventListener('click', async () => {
+    try {
+      await api(`/api/workers/${w.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: $('.ed-name', tr).value.trim(),
+          trade: $('.ed-trade', tr).value.trim() || null,
+          zone: $('.ed-zone', tr).value.trim() || null,
+          foremanId: $('.ed-foreman', tr).value || null,
+          active: $('.ed-active', tr).checked,
+        }),
+      });
+      toast('Saved');
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+  return tr;
+}
+
+/* ---------------- Foremen (admin) ---------------- */
+
+async function renderForemen(root) {
+  const foremen = await api('/api/users/foremen');
+  root.innerHTML = `
+    <div class="section-title">Add foreman account</div>
+    <div class="form-grid">
+      <input type="text" id="nf-username" placeholder="Username" />
+      <input type="text" id="nf-fullname" placeholder="Full name" />
+      <input type="text" id="nf-password" placeholder="Temporary password" />
+      <button class="primary-btn" id="add-foreman-btn">Add foreman</button>
+    </div>
+    <div class="section-title">Foreman accounts (${foremen.length})</div>
+    <div class="table-scroll"><table class="data-table">
+      <thead><tr><th>Username</th><th>Full name</th><th>Active</th><th>Reset password</th><th></th></tr></thead>
+      <tbody id="foremen-tbody"></tbody>
+    </table></div>
+  `;
+
+  const tbody = $('#foremen-tbody');
+  foremen.forEach((f) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(f.username)}</td>
+      <td><input type="text" class="ed-fullname" value="${escapeAttr(f.full_name)}" style="width:100%"/></td>
+      <td><input type="checkbox" class="ed-active" ${f.active ? 'checked' : ''}/></td>
+      <td><input type="text" class="ed-newpass" placeholder="leave blank to keep" style="width:130px"/></td>
+      <td><button class="ghost-btn ed-save">Save</button></td>
+    `;
+    $('.ed-save', tr).addEventListener('click', async () => {
+      try {
+        await api(`/api/users/foremen/${f.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            fullName: $('.ed-fullname', tr).value.trim(),
+            active: $('.ed-active', tr).checked,
+            password: $('.ed-newpass', tr).value || undefined,
+          }),
+        });
+        toast('Saved');
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    tbody.appendChild(tr);
+  });
+
+  $('#add-foreman-btn').addEventListener('click', async () => {
+    const username = $('#nf-username').value.trim();
+    const fullName = $('#nf-fullname').value.trim();
+    const password = $('#nf-password').value;
+    if (!username || !fullName || !password) return toast('All fields required');
+    try {
+      await api('/api/users/foremen', { method: 'POST', body: JSON.stringify({ username, fullName, password }) });
+      toast('Foreman added');
+      setActiveTab('foremen');
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+}
+
+/* ---------------- History & Export ---------------- */
+
+async function renderHistory(root) {
+  const workers = await api('/api/workers');
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+
+  root.innerHTML = `
+    <div class="toolbar">
+      <select id="hist-worker"><option value="">— Choose a worker —</option>${workers
+        .map((w) => `<option value="${w.id}">${escapeHtml(w.name)}</option>`)
+        .join('')}</select>
+      <input type="date" id="hist-from" value="${weekAgo}" />
+      <input type="date" id="hist-to" value="${today}" />
+      <button class="primary-btn" id="hist-load-btn">View history</button>
+    </div>
+    <div class="section-title">Export</div>
+    <div class="toolbar">
+      <input type="date" id="exp-from" value="${weekAgo}" />
+      <input type="date" id="exp-to" value="${today}" />
+      <button class="primary-btn" id="exp-btn">Download CSV</button>
+    </div>
+    <div id="hist-table"></div>
+  `;
+
+  $('#hist-load-btn').addEventListener('click', async () => {
+    const workerId = $('#hist-worker').value;
+    if (!workerId) return toast('Choose a worker first');
+    const from = $('#hist-from').value;
+    const to = $('#hist-to').value;
+    const rows = await api(`/api/attendance/history?workerId=${workerId}&from=${from}&to=${to}`);
+    const box = $('#hist-table');
+    if (rows.length === 0) {
+      box.innerHTML = '<p class="empty-state">No records in that range.</p>';
+      return;
+    }
+    box.innerHTML = `
+      <div class="table-scroll"><table class="data-table">
+        <thead><tr><th>Date</th><th>Status</th><th>Activity</th><th>Duration</th><th>Location</th></tr></thead>
+        <tbody>
+          ${rows
+            .map(
+              (r) => `<tr><td>${r.date}</td><td><span class="status-pill ${r.status}">${r.status}</span></td><td>${escapeHtml(r.activity || '')}</td><td>${escapeHtml(r.duration || '')}</td><td>${escapeHtml(r.location || '')}</td></tr>`
+            )
+            .join('')}
+        </tbody>
+      </table></div>
+    `;
+  });
+
+  $('#exp-btn').addEventListener('click', () => {
+    const from = $('#exp-from').value;
+    const to = $('#exp-to').value;
+    window.location.href = `/api/attendance/export?from=${from}&to=${to}`;
+  });
+}
+
+/* ---------------- Helpers ---------------- */
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function escapeAttr(str) {
+  return escapeHtml(str);
+}
+
+init();
+
+</script>
+</body>
+</html>
